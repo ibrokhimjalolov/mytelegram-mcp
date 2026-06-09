@@ -7,9 +7,13 @@ const USAGE = `mytelegram-mcp — Telegram (user account / MTProto) MCP server
 
 Usage:
   mytelegram-mcp --config <path>                 Run the MCP server over stdio
-  mytelegram-mcp login   --config <path> [--account <label>]   Interactive login
+  mytelegram-mcp login   --config <path> [--account <label>] [--qr]  Interactive login
   mytelegram-mcp logout  --config <path> [--account <label>]   Clear a session
   mytelegram-mcp status  --config <path>                       Show auth status
+
+Login flags:
+  --qr      Log in by scanning a QR code from another Telegram app (device login),
+            instead of entering a phone code.
 
 The --config path may also be supplied via the MYTELEGRAM_CONFIG env var.`;
 
@@ -37,10 +41,11 @@ async function main(): Promise<void> {
   }
   const absConfig = resolve(configPath);
   const account = getFlag(argv, "account");
+  const qr = argv.includes("--qr");
 
   switch (command) {
     case "login":
-      await login(absConfig, account);
+      await login(absConfig, account, { qr });
       break;
     case "logout":
       await logout(absConfig, account);

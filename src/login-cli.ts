@@ -1,10 +1,17 @@
 import { createInterface } from "node:readline/promises";
 import { Writable } from "node:stream";
+import qrcode from "qrcode-terminal";
 import { TelegramClient } from "telegram";
 import { StringSession } from "telegram/sessions/index.js";
 import { LogLevel } from "telegram/extensions/Logger.js";
-import { type Config, loadConfig, selectAccount } from "./config.js";
+import { type ResolvedAccount, type Config, loadConfig, selectAccount } from "./config.js";
 import { clearSession, hasSession, writeSession } from "./session-store.js";
+import { buildQrLoginUrl } from "./qr.js";
+
+export interface LoginOptions {
+  /** Use QR device-login instead of the phone-number + code flow. */
+  qr?: boolean;
+}
 
 /** Prompt for a line of visible input. */
 async function promptText(question: string): Promise<string> {
@@ -37,21 +44,9 @@ async function promptHidden(question: string): Promise<string> {
   }
 }
 
-/** Interactive login for one account; writes the resulting session to its file. */
-export async function login(configPath: string, label?: string): Promise<void> {
-  const config = loadConfig(configPath);
-  const account = selectAccount(config, label);
-
-  console.log(`Logging in account '${account.label}' (${account.phone})…`);
-
-  const client = new TelegramClient(
-    new StringSession(""),
-    account.apiId,
-    account.apiHash,
-    { connectionRetries: 3 },
-  );
-  client.setLogLevel(LogLevel.NONE);
-
+/** Phone-number flow: Telegram sends a code, then a 2FA password if enabled. */
+async function loginWithPhone(client: TelegramClient, account: ResolvedAccount): Promise<void> {
+  console.log(`Logging in account '${account.label}' (${account.phone}) via phone…`);
   await client.start({
     phoneNumber: account.phone,
     phoneCode: async () => promptText(`  Code sent to ${account.phone}: `),
@@ -62,6 +57,61 @@ export async function login(configPath: string, label?: string): Promise<void> {
       return false;
     },
   });
+}
+
+/**
+ * QR device-login flow: render a scannable QR you approve from another logged-in
+ * Telegram app (Settings → Devices → Link Desktop Device). GramJS re-invokes the
+ * qrCode callback each time the token refreshes (~every 30s) until you approve.
+ */
+async function loginWithQr(client: TelegramClient, account: ResolvedAccount): Promise<void> {
+  console.log(`Logging in account '${account.label}' via QR code…`);
+  console.log(
+    "On a phone already logged into Telegram: Settings → Devices → Link Desktop Device, then scan:\n",
+  );
+  await client.connect();
+  await client.signInUserWithQrCode(
+    { apiId: account.apiId, apiHash: account.apiHash },
+    {
+      qrCode: async ({ token }) => {
+        const url = buildQrLoginUrl(token);
+        qrcode.generate(url, { small: true }, (qr) => {
+          process.stdout.write(`\n${qr}\n`);
+        });
+        console.log(`  (or open this link on the device: ${url})\n`);
+      },
+      password: async (hint) =>
+        promptHidden(`  2FA password${hint ? ` (hint: ${hint})` : ""}: `),
+      onError: async (err) => {
+        console.error(`  Login error: ${err.message}`);
+        return true; // stop the auth process on a fatal error
+      },
+    },
+  );
+}
+
+/** Interactive login for one account; writes the resulting session to its file. */
+export async function login(
+  configPath: string,
+  label?: string,
+  options: LoginOptions = {},
+): Promise<void> {
+  const config = loadConfig(configPath);
+  const account = selectAccount(config, label);
+
+  const client = new TelegramClient(
+    new StringSession(""),
+    account.apiId,
+    account.apiHash,
+    { connectionRetries: 3 },
+  );
+  client.setLogLevel(LogLevel.NONE);
+
+  if (options.qr) {
+    await loginWithQr(client, account);
+  } else {
+    await loginWithPhone(client, account);
+  }
 
   const session = client.session.save() as unknown as string;
   writeSession(account.sessionFile, session);

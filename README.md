@@ -61,17 +61,24 @@ Copy `config.example.json` to `config.json` and fill it in:
 
 ### 4. Log in (one time per account)
 
-Login is interactive (Telegram sends a code; you may also have a 2FA password), so it
-runs as a separate command — **not** inside the MCP client:
+Login is interactive, so it runs as a separate command — **not** inside the MCP client.
+Two methods are available:
 
 ```bash
+# Phone-number flow (Telegram sends a code; 2FA password if enabled):
 node dist/index.js login --account personal --config ./config.json
+
+# QR device-login: scan from another Telegram app
+# (Settings → Devices → Link Desktop Device):
+node dist/index.js login --account personal --qr --config ./config.json
+
 # repeat for each account, then check:
 node dist/index.js status --config ./config.json
 ```
 
-This writes a session string to each account's `sessionFile` (mode `0600`). After that
-the server runs fully headless. To sign an account out: `logout --account <label>`.
+Either method writes a session string to the account's `sessionFile` (mode `0600`).
+After that the server runs fully headless. To sign an account out:
+`logout --account <label>`.
 
 ### 5. Register the server with your MCP client (stdio)
 
