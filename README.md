@@ -19,7 +19,6 @@ All tools take an optional `account` (a label from your config; defaults to
 | `list_chats` | List recent chats/dialogs | `limit`, `archived` |
 | `get_messages` | Fetch recent messages from a chat | `chatId`, `limit`, `offsetId` |
 | `search_messages` | Search messages (per-chat or global) | `query`, `chatId?`, `limit` |
-| `send_message` | Send / reply to a message | `chatId`, `text`, `replyToMessageId?` |
 | `react` | Add an emoji reaction | `chatId`, `messageId`, `emoji`, `big?` |
 
 `chatId` accepts a numeric chat id (as a string), `@username`, a phone number, or `me`

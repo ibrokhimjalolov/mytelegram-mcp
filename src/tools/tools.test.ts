@@ -5,7 +5,6 @@ import type { ToolContext } from "../tool-context.js";
 import { handler as listChats } from "./list-chats.js";
 import { handler as getMessages } from "./get-messages.js";
 import { handler as searchMessages } from "./search-messages.js";
-import { handler as sendMessage } from "./send-message.js";
 import { handler as react } from "./react.js";
 
 function ctxWith(client: unknown): ToolContext & { getClient: ReturnType<typeof vi.fn> } {
@@ -48,17 +47,6 @@ it("search_messages searches globally when no chatId is given", async () => {
   await searchMessages({ query: "foo", limit: 10 }, ctxWith(client));
 
   expect(client.getMessages).toHaveBeenCalledWith(undefined, { search: "foo", limit: 10 });
-});
-
-it("send_message sends with replyTo and returns the new id", async () => {
-  const client = { sendMessage: vi.fn(async () => ({ id: 123 })) };
-  const res = (await sendMessage(
-    { chatId: "me", text: "yo", replyToMessageId: 5 },
-    ctxWith(client),
-  )) as any;
-
-  expect(client.sendMessage).toHaveBeenCalledWith("me", { message: "yo", replyTo: 5 });
-  expect(res.messageId).toBe(123);
 });
 
 it("react invokes messages.SendReaction with the emoji", async () => {
