@@ -1,7 +1,7 @@
 {
   "name": "mytelegram-mcp",
   "version": "0.1.0",
-  "description": "MCP server that logs into Telegram as a real user (MTProto) and exposes read/search/react tools, with multi-account support.",
+  "description": "MCP server that logs into Telegram as a real user (MTProto) and exposes read/search/send/react tools, with multi-account support.",
   "type": "module",
   "bin": {
     "mytelegram-mcp": "dist/index.js"
